@@ -23,14 +23,9 @@ impl App {
         let desired_footer_lines: u16 = 2;
         let base_footer_height = desired_footer_lines.min(total_area.height);
         let max_grid_height = total_area.height.saturating_sub(base_footer_height);
-        let rows_to_render = self.visible_rows.min(max_grid_height as usize);
-        let row_units = rows_to_render.saturating_add(1); // include header row
-        let cell_height = if row_units > 0 {
-            (max_grid_height / row_units as u16).max(1)
-        } else {
-            0
-        };
-        let grid_height_used = cell_height * row_units as u16;
+        let rows_to_render = max_grid_height.saturating_sub(1) as usize;
+        let cell_height: u16 = 1;
+        let grid_height_used = cell_height * rows_to_render.saturating_add(1) as u16;
         let footer_carry = total_area
             .height
             .saturating_sub(grid_height_used + base_footer_height);
