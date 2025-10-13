@@ -1,25 +1,144 @@
+use std::{
+    cmp::Ordering,
+    fs::File,
+    io::{self, Write},
+};
+
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use super::{App, Mode};
+use super::{App, CellId, InsertState, Mode};
 
 impl App {
     pub(crate) fn on_key_event(&mut self, key: KeyEvent) {
-        match (key.modifiers, key.code) {
-            (_, KeyCode::Esc | KeyCode::Char('q'))
-            | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => self.quit(),
-            _ => match self.mode {
-                Mode::Normal => self.handle_normal_mode(key),
-            },
+        if key.modifiers.contains(KeyModifiers::CONTROL) {
+            match key.code {
+                KeyCode::Char('s') => {
+                    self.handle_save_command();
+                    return;
+                }
+                KeyCode::Char('q') => {
+                    self.quit();
+                    return;
+                }
+                KeyCode::Char('c') => {
+                    self.quit();
+                    return;
+                }
+                _ => {}
+            }
+        }
+
+        match self.mode {
+            Mode::Normal => self.handle_normal_mode(key),
+            Mode::Insert(_) => self.handle_insert_mode(key),
         }
     }
 
     fn handle_normal_mode(&mut self, key: KeyEvent) {
         match key.code {
-            KeyCode::Left | KeyCode::Char('h') => self.move_cursor(-1, 0),
-            KeyCode::Right | KeyCode::Char('l') => self.move_cursor(1, 0),
-            KeyCode::Up | KeyCode::Char('k') => self.move_cursor(0, -1),
-            KeyCode::Down | KeyCode::Char('j') => self.move_cursor(0, 1),
+            KeyCode::Left | KeyCode::Char('h') => {
+                self.clear_command_buffer();
+                self.move_cursor(-1, 0);
+            }
+            KeyCode::Right | KeyCode::Char('l') => {
+                self.clear_command_buffer();
+                self.move_cursor(1, 0);
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                self.clear_command_buffer();
+                self.move_cursor(0, -1);
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                self.clear_command_buffer();
+                self.move_cursor(0, 1);
+            }
+            KeyCode::Char('g') if key.modifiers.is_empty() => match self.command_buffer.as_str() {
+                "g" => {
+                    self.go_to_first_row();
+                    self.clear_command_buffer();
+                }
+                _ => {
+                    self.command_buffer.clear();
+                    self.command_buffer.push('g');
+                }
+            },
+            KeyCode::Char('G') => {
+                self.command_buffer.clear();
+                self.go_to_last_row_with_value();
+            }
+            KeyCode::Char('o') if key.modifiers.is_empty() => {
+                self.clear_command_buffer();
+                self.insert_row_below_and_edit();
+            }
+            KeyCode::Char('O') => {
+                self.clear_command_buffer();
+                self.insert_row_above_and_edit();
+            }
+            KeyCode::Char('d') if key.modifiers.is_empty() => match self.command_buffer.as_str() {
+                "d" => {
+                    self.delete_current_row();
+                    self.clear_command_buffer();
+                }
+                _ => {
+                    self.command_buffer.clear();
+                    self.command_buffer.push('d');
+                }
+            },
+            KeyCode::Char('y') if key.modifiers.is_empty() => match self.command_buffer.as_str() {
+                "y" => {
+                    self.copy_current_row_to_clipboard();
+                    self.clear_command_buffer();
+                }
+                _ => {
+                    self.command_buffer.clear();
+                    self.command_buffer.push('y');
+                }
+            },
+            KeyCode::Char('p') if key.modifiers.is_empty() => {
+                self.clear_command_buffer();
+                self.paste_clipboard_into_cell();
+            }
+            KeyCode::Char('i') if key.modifiers.is_empty() => {
+                self.clear_command_buffer();
+                self.enter_insert_mode_at_start();
+            }
+            KeyCode::Char('a') if key.modifiers.is_empty() => {
+                self.clear_command_buffer();
+                self.enter_insert_mode_at_end();
+            }
+            KeyCode::Esc => {
+                self.clear_command_buffer();
+            }
+            _ => {
+                self.clear_command_buffer();
+            }
+        }
+    }
+
+    fn handle_insert_mode(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Esc => {
+                self.exit_insert_mode();
+            }
+            KeyCode::Enter => {
+                self.exit_insert_mode();
+                self.move_cursor(0, 1);
+            }
+            KeyCode::Left | KeyCode::Char('h') => self.move_edit_cursor_left(),
+            KeyCode::Right | KeyCode::Char('l') => self.move_edit_cursor_right(),
+            KeyCode::Backspace => self.backspace_cell_value(),
+            KeyCode::Delete => self.delete_cell_value_forward(),
+            KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.insert_character_into_cell(c);
+            }
             _ => {}
+        }
+    }
+
+    fn handle_save_command(&mut self) {
+        match self.save_sheet() {
+            Ok(path) => self.command_buffer = format!("saved {}", path),
+            Err(err) => self.command_buffer = format!("save failed: {}", err),
         }
     }
 
@@ -52,12 +171,289 @@ impl App {
             self.viewport.col = self.cursor.col;
         }
     }
+
+    fn go_to_first_row(&mut self) {
+        self.cursor.row = 0;
+        self.ensure_cursor_visible();
+    }
+
+    fn go_to_last_row_with_value(&mut self) {
+        let last_row = self.cells.keys().map(|cell| cell.row).max().unwrap_or(0);
+        self.cursor.row = last_row;
+        self.ensure_cursor_visible();
+    }
+
+    fn insert_row_below_and_edit(&mut self) {
+        let target = self.cursor.row.saturating_add(1);
+        self.insert_row_at(target);
+        self.cursor.row = target;
+        self.cursor.col = 0;
+        self.ensure_cursor_visible();
+        self.enter_insert_mode_with_cursor(0);
+    }
+
+    fn insert_row_above_and_edit(&mut self) {
+        let target = self.cursor.row;
+        self.insert_row_at(target);
+        self.cursor.col = 0;
+        self.ensure_cursor_visible();
+        self.enter_insert_mode_with_cursor(0);
+    }
+
+    fn insert_row_at(&mut self, row: usize) {
+        let mut affected: Vec<(CellId, String)> = self
+            .cells
+            .iter()
+            .filter(|(cell, _)| cell.row >= row)
+            .map(|(cell, value)| (*cell, value.clone()))
+            .collect();
+        affected.sort_by(|a, b| match b.0.row.cmp(&a.0.row) {
+            Ordering::Equal => b.0.col.cmp(&a.0.col),
+            other => other,
+        });
+
+        for (cell, _) in &affected {
+            self.cells.remove(cell);
+        }
+
+        for (cell, value) in affected {
+            let new_cell = CellId::new(cell.row + 1, cell.col);
+            self.cells.insert(new_cell, value);
+        }
+    }
+
+    fn delete_current_row(&mut self) {
+        let row = self.cursor.row;
+        self.cells.retain(|cell, _| cell.row != row);
+
+        let mut affected: Vec<(CellId, String)> = self
+            .cells
+            .iter()
+            .filter(|(cell, _)| cell.row > row)
+            .map(|(cell, value)| (*cell, value.clone()))
+            .collect();
+        affected.sort_by(|a, b| match a.0.row.cmp(&b.0.row) {
+            Ordering::Equal => a.0.col.cmp(&b.0.col),
+            other => other,
+        });
+
+        for (cell, _) in &affected {
+            self.cells.remove(cell);
+        }
+
+        for (cell, value) in affected {
+            let new_cell = CellId::new(cell.row - 1, cell.col);
+            self.cells.insert(new_cell, value);
+        }
+
+        if self.cursor.row > 0 && !self.row_exists(self.cursor.row) {
+            self.cursor.row = self.cursor.row.saturating_sub(1);
+        }
+        self.ensure_cursor_visible();
+    }
+
+    fn row_exists(&self, row: usize) -> bool {
+        self.cells.keys().any(|cell| cell.row == row)
+    }
+
+    fn copy_current_row_to_clipboard(&mut self) {
+        let csv = self.row_to_csv(self.cursor.row);
+        self.clipboard = Some(csv.clone());
+        self.command_buffer = format!("yy -> {}", csv);
+    }
+
+    fn paste_clipboard_into_cell(&mut self) {
+        if let Some(clip) = self.clipboard.clone() {
+            self.set_current_cell_value(clip.clone());
+            self.command_buffer = "p".to_string();
+        } else {
+            self.command_buffer = "clipboard empty".to_string();
+        }
+    }
+
+    fn enter_insert_mode_at_start(&mut self) {
+        self.enter_insert_mode_with_cursor(0);
+    }
+
+    fn enter_insert_mode_at_end(&mut self) {
+        let len = self.current_cell_value().len();
+        self.enter_insert_mode_with_cursor(len);
+    }
+
+    fn enter_insert_mode_with_cursor(&mut self, cursor: usize) {
+        let len = self.current_cell_value().len();
+        self.mode = Mode::Insert(InsertState {
+            cursor: cursor.min(len),
+        });
+        self.command_buffer.clear();
+    }
+
+    fn exit_insert_mode(&mut self) {
+        self.mode = Mode::Normal;
+        self.command_buffer.clear();
+    }
+
+    fn insert_character_into_cell(&mut self, ch: char) {
+        let cursor = match self.mode {
+            Mode::Insert(state) => state.cursor,
+            Mode::Normal => return,
+        };
+
+        let mut value = self.current_cell_value();
+        let insert_at = cursor.min(value.len());
+        value.insert(insert_at, ch);
+        let new_cursor = insert_at + ch.len_utf8();
+        self.set_current_cell_value(value);
+
+        if let Mode::Insert(ref mut state) = self.mode {
+            state.cursor = new_cursor;
+        }
+    }
+
+    fn backspace_cell_value(&mut self) {
+        let cursor = match self.mode {
+            Mode::Insert(state) => state.cursor,
+            Mode::Normal => return,
+        };
+
+        if cursor == 0 {
+            return;
+        }
+
+        let mut value = self.current_cell_value();
+        let pos = cursor.min(value.len());
+        if let Some((idx, ch)) = value[..pos].char_indices().next_back() {
+            let end = idx + ch.len_utf8();
+            value.drain(idx..end);
+            self.set_current_cell_value(value);
+            if let Mode::Insert(ref mut state) = self.mode {
+                state.cursor = idx;
+            }
+        }
+    }
+
+    fn delete_cell_value_forward(&mut self) {
+        let cursor = match self.mode {
+            Mode::Insert(state) => state.cursor,
+            Mode::Normal => return,
+        };
+
+        let mut value = self.current_cell_value();
+        let pos = cursor.min(value.len());
+        if let Some((idx, ch)) = value[pos..].char_indices().next() {
+            let start = pos + idx;
+            let end = start + ch.len_utf8();
+            value.drain(start..end);
+            self.set_current_cell_value(value);
+        }
+    }
+
+    fn move_edit_cursor_left(&mut self) {
+        let cursor = match self.mode {
+            Mode::Insert(state) => state.cursor,
+            Mode::Normal => return,
+        };
+
+        if cursor == 0 {
+            return;
+        }
+
+        let value = self.current_cell_value();
+        let pos = cursor.min(value.len());
+        if let Some((idx, _)) = value[..pos].char_indices().next_back() {
+            if let Mode::Insert(ref mut state) = self.mode {
+                state.cursor = idx;
+            }
+        }
+    }
+
+    fn move_edit_cursor_right(&mut self) {
+        let cursor = match self.mode {
+            Mode::Insert(state) => state.cursor,
+            Mode::Normal => return,
+        };
+
+        let value = self.current_cell_value();
+        let pos = cursor.min(value.len());
+        let new_cursor = if let Some((idx, ch)) = value[pos..].char_indices().next() {
+            pos + idx + ch.len_utf8()
+        } else {
+            value.len()
+        };
+
+        if let Mode::Insert(ref mut state) = self.mode {
+            state.cursor = new_cursor;
+        }
+    }
+
+    fn current_cell_value(&self) -> String {
+        let id = CellId::new(self.cursor.row, self.cursor.col);
+        self.cells.get(&id).cloned().unwrap_or_default()
+    }
+
+    fn set_current_cell_value(&mut self, value: String) {
+        let id = CellId::new(self.cursor.row, self.cursor.col);
+        if value.is_empty() {
+            self.cells.remove(&id);
+        } else {
+            self.cells.insert(id, value);
+        }
+    }
+
+    fn row_to_csv(&self, row: usize) -> String {
+        let cols: Vec<usize> = self
+            .cells
+            .keys()
+            .filter(|cell| cell.row == row)
+            .map(|cell| cell.col)
+            .collect();
+
+        let max_col = cols.iter().copied().max().unwrap_or(0);
+        let mut fields = Vec::with_capacity(max_col + 1);
+        for col in 0..=max_col {
+            let id = CellId::new(row, col);
+            let value = self.cells.get(&id).cloned().unwrap_or_default();
+            fields.push(csv_escape(&value));
+        }
+        fields.join(",")
+    }
+
+    fn save_sheet(&self) -> io::Result<String> {
+        let path = self.file_name.clone();
+        let mut file = File::create(&path)?;
+        let max_row = self
+            .cells
+            .keys()
+            .map(|cell| cell.row)
+            .max()
+            .unwrap_or(self.cursor.row);
+
+        for row in 0..=max_row {
+            let line = self.row_to_csv(row);
+            writeln!(file, "{}", line)?;
+        }
+        file.flush()?;
+        Ok(path)
+    }
+
+    fn clear_command_buffer(&mut self) {
+        self.command_buffer.clear();
+    }
 }
 
 fn apply_delta(value: usize, delta: i32) -> usize {
     if delta < 0 {
-        value.saturating_sub(delta.abs() as usize)
+        value.saturating_sub((-delta) as usize)
     } else {
         value.saturating_add(delta as usize)
+    }
+}
+
+fn csv_escape(value: &str) -> String {
+    if value.contains(['"', ',', '\n']) {
+        let escaped = value.replace('"', "\"\"");
+        format!("\"{}\"", escaped)
+    } else {
+        value.to_string()
     }
 }

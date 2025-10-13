@@ -21,6 +21,7 @@ pub struct App {
     cursor: Cursor,
     file_name: String,
     command_buffer: String,
+    clipboard: Option<String>,
 }
 
 impl App {
@@ -33,8 +34,9 @@ impl App {
             viewport: Viewport::default(),
             cells: HashMap::new(),
             cursor: Cursor::default(),
-            file_name: String::from("Untitled"),
+            file_name: String::from("Untitled.csv"),
             command_buffer: String::new(),
+            clipboard: None,
         }
     }
 
@@ -79,12 +81,19 @@ impl CellId {
 #[derive(Debug, Clone, Copy)]
 enum Mode {
     Normal,
+    Insert(InsertState),
 }
 
 impl fmt::Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Mode::Normal => write!(f, "NORMAL"),
+            Mode::Insert(_) => write!(f, "INSERT"),
         }
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct InsertState {
+    cursor: usize,
 }
