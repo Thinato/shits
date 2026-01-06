@@ -6,6 +6,8 @@ use std::{
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
+use crate::app::Cursor;
+
 use super::{App, CellId, InsertState, Mode};
 
 impl App {
@@ -31,11 +33,20 @@ impl App {
         match self.mode {
             Mode::Normal => self.handle_normal_mode(key),
             Mode::Insert(_) => self.handle_insert_mode(key),
+            Mode::Command => todo!(), //self.handle_command_mode(key),
         }
     }
 
     fn handle_normal_mode(&mut self, key: KeyEvent) {
         match key.code {
+            KeyCode::Char('b') => {
+                self.clear_command_buffer();
+                self.move_cursor(-5, 0);
+            }
+            KeyCode::Char('w') => {
+                self.clear_command_buffer();
+                self.move_cursor(5, 0);
+            }
             KeyCode::Left | KeyCode::Char('h') => {
                 self.clear_command_buffer();
                 self.move_cursor(-1, 0);
@@ -297,6 +308,7 @@ impl App {
         let cursor = match self.mode {
             Mode::Insert(state) => state.cursor,
             Mode::Normal => return,
+            Mode::Command => return,
         };
 
         let mut value = self.current_cell_value();
@@ -314,6 +326,7 @@ impl App {
         let cursor = match self.mode {
             Mode::Insert(state) => state.cursor,
             Mode::Normal => return,
+            Mode::Command => return,
         };
 
         if cursor == 0 {
@@ -336,6 +349,7 @@ impl App {
         let cursor = match self.mode {
             Mode::Insert(state) => state.cursor,
             Mode::Normal => return,
+            Mode::Command => return,
         };
 
         let mut value = self.current_cell_value();
@@ -352,6 +366,7 @@ impl App {
         let cursor = match self.mode {
             Mode::Insert(state) => state.cursor,
             Mode::Normal => return,
+            Mode::Command => return,
         };
 
         if cursor == 0 {
@@ -371,6 +386,7 @@ impl App {
         let cursor = match self.mode {
             Mode::Insert(state) => state.cursor,
             Mode::Normal => return,
+            Mode::Command => return,
         };
 
         let value = self.current_cell_value();

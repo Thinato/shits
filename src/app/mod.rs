@@ -82,6 +82,7 @@ impl CellId {
 enum Mode {
     Normal,
     Insert(InsertState),
+    Command,
 }
 
 impl fmt::Display for Mode {
@@ -89,6 +90,7 @@ impl fmt::Display for Mode {
         match self {
             Mode::Normal => write!(f, "NORMAL"),
             Mode::Insert(_) => write!(f, "INSERT"),
+            Mode::Command => write!(f, ":"),
         }
     }
 }
