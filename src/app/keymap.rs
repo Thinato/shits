@@ -15,7 +15,7 @@ impl App {
         if key.modifiers.contains(KeyModifiers::CONTROL) {
             match key.code {
                 KeyCode::Char('s') => {
-                    self.handle_save_command();
+                    self.handle_save_command(self.file_name.clone());
                     return;
                 }
                 KeyCode::Char('q') => {
@@ -173,20 +173,26 @@ impl App {
     }
 
     fn execute_command(&mut self) {
-        match self.command_buffer.as_str() {
-            "w" | "write" => self.handle_save_command(),
+        let binding = self.command_buffer.clone();
+        let command: Vec<&str> = binding.split(' ').collect();
+
+        match command[0] {
+            "w" | "write" => {
+                let path = command.get(1).cloned().unwrap_or(self.file_name.as_str());
+                self.handle_save_command(String::from(path));
+            }
             "q" | "quit" => self.quit(),
             "wq" => {
-                self.handle_save_command();
+                self.handle_save_command(self.file_name.clone());
                 self.quit()
             }
-            _ => self.command_buffer = format!("unknown command: {}", self.command_buffer),
+            _ => self.command_buffer = format!("unknown command: {}", command[0]),
         }
         self.clear_command_buffer();
     }
 
-    fn handle_save_command(&mut self) {
-        match self.save_sheet() {
+    fn handle_save_command(&mut self, path: String) {
+        match self.save_sheet(path.as_str()) {
             Ok(path) => self.command_buffer = format!("saved {}", path),
             Err(err) => self.command_buffer = format!("save failed: {}", err),
         }
@@ -484,8 +490,7 @@ impl App {
         csv_escape(&value)
     }
 
-    fn save_sheet(&self) -> io::Result<String> {
-        let path = self.file_name.clone();
+    fn save_sheet(&self, path: &str) -> io::Result<String> {
         let mut file = File::create(&path)?;
         let max_row = self
             .cells
@@ -499,7 +504,7 @@ impl App {
             writeln!(file, "{}", line)?;
         }
         file.flush()?;
-        Ok(path)
+        Ok(String::from(path))
     }
 
     fn clear_command_buffer(&mut self) {
