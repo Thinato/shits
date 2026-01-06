@@ -124,8 +124,8 @@ impl App {
                 self.exit_insert_mode();
                 self.move_cursor(0, 1);
             }
-            KeyCode::Left | KeyCode::Char('h') => self.move_edit_cursor_left(),
-            KeyCode::Right | KeyCode::Char('l') => self.move_edit_cursor_right(),
+            KeyCode::Left => self.move_edit_cursor_left(),
+            KeyCode::Right => self.move_edit_cursor_right(),
             KeyCode::Backspace => self.backspace_cell_value(),
             KeyCode::Delete => self.delete_cell_value_forward(),
             KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
