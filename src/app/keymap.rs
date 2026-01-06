@@ -97,7 +97,7 @@ impl App {
             },
             KeyCode::Char('y') if key.modifiers.is_empty() => match self.command_buffer.as_str() {
                 "y" => {
-                    self.copy_current_row_to_clipboard();
+                    self.copy_current_cell_to_clipboard();
                     self.clear_command_buffer();
                 }
                 _ => {
@@ -267,8 +267,8 @@ impl App {
         self.cells.keys().any(|cell| cell.row == row)
     }
 
-    fn copy_current_row_to_clipboard(&mut self) {
-        let csv = self.row_to_csv(self.cursor.row);
+    fn copy_current_cell_to_clipboard(&mut self) {
+        let csv = self.cell_to_csv(self.cursor);
         self.clipboard = Some(csv.clone());
         self.command_buffer = format!("yy -> {}", csv);
     }
@@ -432,6 +432,12 @@ impl App {
             fields.push(csv_escape(&value));
         }
         fields.join(",")
+    }
+
+    fn cell_to_csv(&self, cursor: Cursor) -> String {
+        let id = CellId::new(cursor.row, cursor.col);
+        let value = self.cells.get(&id).cloned().unwrap_or_default();
+        csv_escape(&value)
     }
 
     fn save_sheet(&self) -> io::Result<String> {
