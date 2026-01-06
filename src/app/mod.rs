@@ -90,7 +90,7 @@ impl fmt::Display for Mode {
         match self {
             Mode::Normal => write!(f, "NORMAL"),
             Mode::Insert(_) => write!(f, "INSERT"),
-            Mode::Command => write!(f, ":"),
+            Mode::Command => write!(f, "COMMAND"),
         }
     }
 }

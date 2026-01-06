@@ -33,7 +33,7 @@ impl App {
         match self.mode {
             Mode::Normal => self.handle_normal_mode(key),
             Mode::Insert(_) => self.handle_insert_mode(key),
-            Mode::Command => todo!(), //self.handle_command_mode(key),
+            Mode::Command => self.handle_command_mode(key),
         }
     }
 
@@ -113,12 +113,19 @@ impl App {
                 self.clear_command_buffer();
                 self.enter_insert_mode_at_start();
             }
+            KeyCode::Char(':') if key.modifiers.is_empty() => {
+                self.clear_command_buffer();
+                self.enter_command_mode();
+            }
             KeyCode::Char('a') if key.modifiers.is_empty() => {
                 self.clear_command_buffer();
                 self.enter_insert_mode_at_end();
             }
             KeyCode::Esc => {
                 self.clear_command_buffer();
+            }
+            KeyCode::Enter => {
+                self.move_cursor(0, 1);
             }
             _ => {
                 self.clear_command_buffer();
@@ -129,10 +136,10 @@ impl App {
     fn handle_insert_mode(&mut self, key: KeyEvent) {
         match key.code {
             KeyCode::Esc => {
-                self.exit_insert_mode();
+                self.enter_normal_mode();
             }
             KeyCode::Enter => {
-                self.exit_insert_mode();
+                self.enter_normal_mode();
                 self.move_cursor(0, 1);
             }
             KeyCode::Left => self.move_edit_cursor_left(),
@@ -144,6 +151,38 @@ impl App {
             }
             _ => {}
         }
+    }
+
+    fn handle_command_mode(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Esc => {
+                self.enter_normal_mode();
+            }
+            KeyCode::Enter => {
+                self.execute_command();
+                self.enter_normal_mode();
+            }
+            KeyCode::Backspace | KeyCode::Delete => {
+                self.command_buffer.pop();
+            }
+            KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.command_buffer.push(c);
+            }
+            _ => {}
+        }
+    }
+
+    fn execute_command(&mut self) {
+        match self.command_buffer.as_str() {
+            "w" | "write" => self.handle_save_command(),
+            "q" | "quit" => self.quit(),
+            "wq" => {
+                self.handle_save_command();
+                self.quit()
+            }
+            _ => self.command_buffer = format!("unknown command: {}", self.command_buffer),
+        }
+        self.clear_command_buffer();
     }
 
     fn handle_save_command(&mut self) {
@@ -299,8 +338,13 @@ impl App {
         self.command_buffer.clear();
     }
 
-    fn exit_insert_mode(&mut self) {
+    fn enter_normal_mode(&mut self) {
         self.mode = Mode::Normal;
+        self.command_buffer.clear();
+    }
+
+    fn enter_command_mode(&mut self) {
+        self.mode = Mode::Command;
         self.command_buffer.clear();
     }
 
