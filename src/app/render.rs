@@ -244,7 +244,7 @@ impl App {
     }
 
     fn selected_cell_style(&self) -> Style {
-        Style::default().fg(Color::Black).bg(Color::LightYellow)
+        Style::default().fg(Color::Black).bg(Color::Yellow)
     }
 
     fn render_cell_text(&self, row: usize, col: usize) -> Text<'static> {
@@ -259,7 +259,7 @@ impl App {
         if let Some(cursor) = cursor {
             let cursor = cursor.min(value.len());
             let (before, almost_after) = value.split_at(cursor);
-            let cursor_style = Style::default().fg(Color::Black).bg(Color::White);
+            let cursor_style = Style::default().fg(Color::Black).bg(Color::Cyan);
             if almost_after.len() < 1 {
                 return Text::from(Line::from(vec![
                     Span::raw(value),
