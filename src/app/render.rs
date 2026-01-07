@@ -25,9 +25,15 @@ impl App {
         let desired_footer_lines: u16 = 2;
         let base_footer_height = desired_footer_lines.min(total_area.height);
         let max_grid_height = total_area.height.saturating_sub(base_footer_height);
-        let rows_to_render = max_grid_height.saturating_sub(1) as usize;
         let cell_height: u16 = 1;
-        let grid_height_used = cell_height * rows_to_render.saturating_add(1) as u16;
+        let title_height: u16 = 1;
+        let header_height: u16 = cell_height;
+        let available_grid_height = max_grid_height.saturating_sub(title_height + header_height);
+        let rows_to_render = (available_grid_height / cell_height) as usize;
+        let grid_height_used = (title_height
+            + header_height
+            + cell_height.saturating_mul(rows_to_render as u16))
+            .min(max_grid_height);
         let footer_carry = total_area
             .height
             .saturating_sub(grid_height_used + base_footer_height);
@@ -43,6 +49,8 @@ impl App {
 
         let grid_area = layout[0];
         let footer_area = layout[1];
+
+        self.visible_rows = rows_to_render;
 
         if grid_area.height > 0
             && grid_area.width > 0
