@@ -2,9 +2,11 @@ use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style, Stylize},
-    text::Line,
+    text::{Line, Span, Text},
     widgets::{Block, Paragraph},
 };
+
+use crate::app::Mode;
 
 use super::App;
 
@@ -202,7 +204,7 @@ impl App {
                 Style::default()
             };
 
-            let display = self.cell_display_value(global_row, global_col);
+            let display = self.render_cell_text(global_row, global_col);
 
             let cell_block = Block::default().style(style);
             let cell_widget = Paragraph::new(display)
@@ -242,10 +244,43 @@ impl App {
     }
 
     fn selected_cell_style(&self) -> Style {
-        Style::default().fg(Color::Black).bg(Color::Yellow)
+        Style::default().fg(Color::Black).bg(Color::LightYellow)
     }
 
-    fn cell_display_value(&self, row: usize, col: usize) -> String {
+    fn render_cell_text(&self, row: usize, col: usize) -> Text<'static> {
+        let value = self.get_cell_value(row, col);
+        let cursor = match self.mode {
+            Mode::Insert(state) if self.cursor.row == row && self.cursor.col == col => {
+                Some(state.cursor)
+            }
+            _ => None,
+        };
+
+        if let Some(cursor) = cursor {
+            let cursor = cursor.min(value.len());
+            let (before, almost_after) = value.split_at(cursor);
+            let cursor_style = Style::default().fg(Color::Black).bg(Color::White);
+            if almost_after.len() < 1 {
+                return Text::from(Line::from(vec![
+                    Span::raw(value),
+                    Span::styled(" ", cursor_style),
+                ]));
+            }
+            
+            let (cursor_char, after) = almost_after.split_at(1);
+
+            let line = Line::from(vec![
+                Span::raw(before.to_string()),
+                Span::styled(cursor_char.to_string(), cursor_style),
+                Span::raw(after.to_string()),
+            ]);
+            Text::from(line)
+        } else {
+            Text::raw(value)
+        }
+    }
+
+    fn get_cell_value(&self, row: usize, col: usize) -> String {
         match self.cells.get(&super::CellId::new(row, col)) {
             Some(value) if !value.is_empty() => value.clone(),
             _ => "".to_string(),
