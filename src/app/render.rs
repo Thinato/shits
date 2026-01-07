@@ -216,7 +216,7 @@ impl App {
 
             let cell_block = Block::default().style(style);
             let cell_widget = Paragraph::new(display)
-                .alignment(Alignment::Center)
+                .alignment(Alignment::Left)
                 .block(cell_block);
 
             frame.render_widget(cell_widget, *cell_area);
