@@ -186,6 +186,12 @@ impl App {
                 self.handle_save_command(self.file_name.clone());
                 self.quit()
             }
+            "cols" => {
+                let amount = command.get(1).cloned().unwrap_or("8");
+                if let Ok(amount) = amount.parse::<usize>() {
+                    self.visible_cols = amount;
+                }
+            }
             _ => self.command_buffer = format!("unknown command: {}", command[0]),
         }
         self.clear_command_buffer();
