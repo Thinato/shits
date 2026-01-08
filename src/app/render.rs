@@ -19,6 +19,9 @@ impl App {
         }
 
         let total_area = frame.area();
+        let global_style = self.global_style();
+        frame.render_widget(Block::default().style(global_style), total_area);
+
         let desired_footer_lines: u16 = 2;
         let base_footer_height = desired_footer_lines.min(total_area.height);
         let max_grid_height = total_area.height.saturating_sub(base_footer_height);
@@ -86,7 +89,9 @@ impl App {
             )
             .centered();
 
-        let grid_block = Block::default().title(grid_title);
+        let grid_block = Block::default()
+            .title(grid_title)
+            .style(self.global_style());
         let inner_area = grid_block.inner(area);
         frame.render_widget(grid_block, area);
 
@@ -217,7 +222,7 @@ impl App {
                     .bg(self.theme.selected_col_bg)
                     .fg(self.theme.selected_col_fg)
             } else {
-                Style::default()
+                self.global_style()
             };
 
             let display = self.render_cell_text(global_row, global_col);
@@ -246,16 +251,22 @@ impl App {
         if base_lines > 0 && !footer_chunks.is_empty() {
             let cell_label = format!("{}{}", column_name(self.cursor.col), self.cursor.row + 1);
             let line = format!("{}  |  Cell: {}", self.file_name, cell_label);
-            frame.render_widget(Paragraph::new(line), footer_chunks[0]);
+            frame.render_widget(
+                Paragraph::new(line).style(self.global_style()),
+                footer_chunks[0],
+            );
         }
 
         if base_lines > 1 && footer_chunks.len() > 1 {
             let mode_line = format!("Mode: {} | Cmd: {}", self.mode, self.command_buffer);
-            frame.render_widget(Paragraph::new(mode_line), footer_chunks[1]);
+            frame.render_widget(
+                Paragraph::new(mode_line).style(self.global_style()),
+                footer_chunks[1],
+            );
         }
 
         for chunk in footer_chunks.iter().skip(base_lines) {
-            frame.render_widget(Paragraph::new(""), *chunk);
+            frame.render_widget(Paragraph::new("").style(self.global_style()), *chunk);
         }
     }
 
@@ -311,6 +322,12 @@ impl App {
                 .bg(self.theme.header_bg)
                 .fg(self.theme.header_fg)
         }
+    }
+
+    fn global_style(&self) -> Style {
+        Style::default()
+            .bg(self.theme.global_bg)
+            .fg(self.theme.global_fg)
     }
 }
 

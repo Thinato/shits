@@ -135,7 +135,7 @@ impl Default for Theme {
             header_bg: Color::Rgb(18, 18, 18),
             header_selected_fg: Color::Rgb(255, 255, 255),
             header_selected_bg: Color::Rgb(70, 70, 70),
-            selected_cell_fg: Color::Rgb(255, 255, 255),
+            selected_cell_fg: Color::Rgb(0, 0, 0),
             selected_cell_bg: Color::Rgb(255, 221, 51),
             selected_row_fg: Color::Rgb(255, 255, 255),
             selected_row_bg: Color::Rgb(32, 32, 32),
