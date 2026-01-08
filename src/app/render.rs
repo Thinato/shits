@@ -250,7 +250,7 @@ impl App {
 
         if base_lines > 0 && !footer_chunks.is_empty() {
             let cell_label = format!("{}{}", column_name(self.cursor.col), self.cursor.row + 1);
-            let line = format!("{}  |  Cell: {}", self.file_name, cell_label);
+            let line = format!("{} - [{}]", self.file_name, cell_label);
             frame.render_widget(
                 Paragraph::new(line).style(self.global_style()),
                 footer_chunks[0],
@@ -258,7 +258,18 @@ impl App {
         }
 
         if base_lines > 1 && footer_chunks.len() > 1 {
-            let mode_line = format!("Mode: {} | Cmd: {}", self.mode, self.command_buffer);
+            let mode_line;
+            match self.mode {
+                Mode::Insert(_) => {
+                    mode_line = format!("-- INSERT -- ");
+                }
+                Mode::Command => {
+                    mode_line = format!(":{}", self.command_buffer);
+                }
+                _ => {
+                    mode_line = String::new();
+                }
+            }
             frame.render_widget(
                 Paragraph::new(mode_line).style(self.global_style()),
                 footer_chunks[1],
