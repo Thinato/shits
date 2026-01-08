@@ -1,0 +1,18 @@
+{
+    "global_fg": [255, 255, 255],
+    "global_bg": [18, 18, 18],
+    "cursor_fg": [158, 149, 199],
+    "cursor_bg": [18, 18, 18],
+    "title_fg": [158, 149, 199],
+    "title_bg": [18, 18, 18],
+    "header_fg": [255, 255, 255],
+    "header_bg": [18, 18, 18],
+    "header_selected_fg": [255, 255, 255],
+    "header_selected_bg": [70, 70, 70],
+    "selected_cell_fg": [0, 0, 0],
+    "selected_cell_bg": [255, 221, 51],
+    "selected_row_fg": [255, 255, 255],
+    "selected_row_bg": [32, 32, 32],
+    "selected_col_fg": [255, 255, 255],
+    "selected_col_bg": [32, 32, 32]
+}

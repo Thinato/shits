@@ -192,9 +192,31 @@ impl App {
                     self.visible_cols = amount;
                 }
             }
+            "theme" => {
+                let name = command.get(1).copied();
+                self.handle_theme_command(name);
+            }
             _ => self.command_buffer = format!("unknown command: {}", command[0]),
         }
         self.clear_command_buffer();
+    }
+
+    fn handle_theme_command(&mut self, name: Option<&str>) {
+        match name {
+            Some(name) => match self.load_theme_by_name(name) {
+                Ok(()) => self.command_buffer = format!("theme set to {}", name),
+                Err(err) => self.command_buffer = format!("theme error: {}", err),
+            },
+            None => match self.list_available_themes() {
+                Ok(themes) if themes.is_empty() => {
+                    self.command_buffer = "no themes found".to_string();
+                }
+                Ok(themes) => {
+                    self.command_buffer = format!("themes: {}", themes.join(", "));
+                }
+                Err(err) => self.command_buffer = format!("theme error: {}", err),
+            },
+        }
     }
 
     fn handle_save_command(&mut self, path: String) {

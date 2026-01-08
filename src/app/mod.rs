@@ -2,10 +2,15 @@ mod events;
 mod keymap;
 mod render;
 
-use std::{collections::HashMap, fmt};
+use std::{
+    collections::HashMap,
+    fmt, fs,
+    path::{Path, PathBuf},
+};
 
 use color_eyre::Result;
 use ratatui::{DefaultTerminal, style::Color};
+use serde::Deserialize;
 
 const DEFAULT_VISIBLE_ROWS: usize = 12;
 const DEFAULT_VISIBLE_COLS: usize = 8;
@@ -53,6 +58,37 @@ impl App {
 
     pub(crate) fn quit(&mut self) {
         self.running = false;
+    }
+
+    fn load_theme_by_name(&mut self, name: &str) -> Result<(), String> {
+        let file_name = normalize_theme_name(name)?;
+        let path = themes_dir().join(file_name);
+        let raw = fs::read_to_string(&path)
+            .map_err(|err| format!("unable to read {}: {}", path.display(), err))?;
+        let config: ThemeConfig =
+            serde_json::from_str(&raw).map_err(|err| format!("invalid theme json: {}", err))?;
+        let mut theme = Theme::default();
+        config.apply_to(&mut theme)?;
+        self.theme = theme;
+        Ok(())
+    }
+
+    fn list_available_themes(&self) -> Result<Vec<String>, String> {
+        let entries = fs::read_dir(themes_dir())
+            .map_err(|err| format!("unable to read themes dir: {}", err))?;
+        let mut themes = Vec::new();
+        for entry in entries {
+            let entry = entry.map_err(|err| format!("unable to read theme entry: {}", err))?;
+            let path = entry.path();
+            if path.extension().and_then(|ext| ext.to_str()) != Some("json") {
+                continue;
+            }
+            if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
+                themes.push(stem.to_string());
+            }
+        }
+        themes.sort();
+        Ok(themes)
     }
 }
 
@@ -122,6 +158,26 @@ struct Theme {
     selected_col_bg: Color,
 }
 
+#[derive(Debug, Default, Deserialize)]
+struct ThemeConfig {
+    global_bg: Option<[u8; 3]>,
+    global_fg: Option<[u8; 3]>,
+    cursor_fg: Option<[u8; 3]>,
+    cursor_bg: Option<[u8; 3]>,
+    title_fg: Option<[u8; 3]>,
+    title_bg: Option<[u8; 3]>,
+    header_fg: Option<[u8; 3]>,
+    header_bg: Option<[u8; 3]>,
+    header_selected_fg: Option<[u8; 3]>,
+    header_selected_bg: Option<[u8; 3]>,
+    selected_cell_fg: Option<[u8; 3]>,
+    selected_cell_bg: Option<[u8; 3]>,
+    selected_row_fg: Option<[u8; 3]>,
+    selected_row_bg: Option<[u8; 3]>,
+    selected_col_fg: Option<[u8; 3]>,
+    selected_col_bg: Option<[u8; 3]>,
+}
+
 impl Default for Theme {
     fn default() -> Self {
         Self {
@@ -142,5 +198,55 @@ impl Default for Theme {
             selected_col_fg: Color::Rgb(255, 255, 255),
             selected_col_bg: Color::Rgb(32, 32, 32),
         }
+    }
+}
+
+impl ThemeConfig {
+    fn apply_to(self, theme: &mut Theme) -> Result<(), String> {
+        apply_color(&mut theme.global_bg, self.global_bg)?;
+        apply_color(&mut theme.global_fg, self.global_fg)?;
+        apply_color(&mut theme.cursor_fg, self.cursor_fg)?;
+        apply_color(&mut theme.cursor_bg, self.cursor_bg)?;
+        apply_color(&mut theme.title_fg, self.title_fg)?;
+        apply_color(&mut theme.title_bg, self.title_bg)?;
+        apply_color(&mut theme.header_fg, self.header_fg)?;
+        apply_color(&mut theme.header_bg, self.header_bg)?;
+        apply_color(&mut theme.header_selected_fg, self.header_selected_fg)?;
+        apply_color(&mut theme.header_selected_bg, self.header_selected_bg)?;
+        apply_color(&mut theme.selected_cell_fg, self.selected_cell_fg)?;
+        apply_color(&mut theme.selected_cell_bg, self.selected_cell_bg)?;
+        apply_color(&mut theme.selected_row_fg, self.selected_row_fg)?;
+        apply_color(&mut theme.selected_row_bg, self.selected_row_bg)?;
+        apply_color(&mut theme.selected_col_fg, self.selected_col_fg)?;
+        apply_color(&mut theme.selected_col_bg, self.selected_col_bg)?;
+        Ok(())
+    }
+}
+
+fn apply_color(target: &mut Color, value: Option<[u8; 3]>) -> Result<(), String> {
+    let Some(value) = value else {
+        return Ok(());
+    };
+    *target = Color::Rgb(value[0], value[1], value[2]);
+    Ok(())
+}
+
+fn themes_dir() -> PathBuf {
+    PathBuf::from("themes")
+}
+
+fn normalize_theme_name(name: &str) -> Result<String, String> {
+    let path = Path::new(name);
+    if path.components().count() > 1 {
+        return Err("theme name must be a file name".to_string());
+    }
+    let raw = path
+        .file_name()
+        .and_then(|s| s.to_str())
+        .ok_or_else(|| "invalid theme name".to_string())?;
+    if raw.ends_with(".json") {
+        Ok(raw.to_string())
+    } else {
+        Ok(format!("{}.json", raw))
     }
 }

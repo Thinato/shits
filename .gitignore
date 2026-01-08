@@ -2,6 +2,8 @@
 */**
 !src/**
 !src/
+!themes/**
+!themes/
 !Cargo.toml
 !LICENSE
 !README.md
