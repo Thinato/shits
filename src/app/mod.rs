@@ -6,7 +6,6 @@ use std::{collections::HashMap, fmt};
 
 use color_eyre::Result;
 use ratatui::{DefaultTerminal, style::Color};
-use serde::Deserialize;
 
 const DEFAULT_VISIBLE_ROWS: usize = 12;
 const DEFAULT_VISIBLE_COLS: usize = 8;

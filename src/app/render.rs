@@ -1,7 +1,7 @@
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
-    style::{Color, Style, Stylize},
+    style::{Style, Stylize},
     text::{Line, Span, Text},
     widgets::{Block, Paragraph},
 };
@@ -271,7 +271,9 @@ impl App {
         if let Some(cursor) = cursor {
             let cursor = cursor.min(value.len());
             let (before, almost_after) = value.split_at(cursor);
-            let cursor_style = Style::default().fg(Color::Black).bg(Color::Cyan);
+            let cursor_style = Style::default()
+                .fg(self.theme.cursor_fg)
+                .bg(self.theme.cursor_bg);
             if almost_after.len() < 1 {
                 return Text::from(Line::from(vec![
                     Span::raw(value),
