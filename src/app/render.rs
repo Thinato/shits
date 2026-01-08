@@ -11,9 +11,6 @@ use crate::app::Mode;
 use super::App;
 
 const ROW_HEADER_WIDTH: u16 = 5;
-const HEADER_BG: Color = Color::Rgb(40, 40, 40);
-const HEADER_HIGHLIGHT_BG: Color = Color::Rgb(70, 70, 70);
-const ROW_HIGHLIGHT_BG: Color = Color::Rgb(32, 32, 32);
 
 impl App {
     pub(crate) fn render(&mut self, frame: &mut Frame) {
@@ -30,10 +27,9 @@ impl App {
         let header_height: u16 = cell_height;
         let available_grid_height = max_grid_height.saturating_sub(title_height + header_height);
         let rows_to_render = (available_grid_height / cell_height) as usize;
-        let grid_height_used = (title_height
-            + header_height
-            + cell_height.saturating_mul(rows_to_render as u16))
-            .min(max_grid_height);
+        let grid_height_used =
+            (title_height + header_height + cell_height.saturating_mul(rows_to_render as u16))
+                .min(max_grid_height);
         let footer_carry = total_area
             .height
             .saturating_sub(grid_height_used + base_footer_height);
@@ -83,7 +79,11 @@ impl App {
 
         let grid_title = Line::from("shits :: Terminal Sheet")
             .bold()
-            .blue()
+            .style(
+                Style::default()
+                    .fg(self.theme.title_fg)
+                    .bg(self.theme.title_bg),
+            )
             .centered();
 
         let grid_block = Block::default().title(grid_title);
@@ -149,7 +149,7 @@ impl App {
             && self.cursor.row < self.viewport.row + self.visible_rows
             && self.cursor.col >= self.viewport.col
             && self.cursor.col < self.viewport.col + self.visible_cols;
-        let corner_style = header_style(corner_selected);
+        let corner_style = self.header_style(corner_selected);
         let corner_widget = Paragraph::new("")
             .alignment(Alignment::Center)
             .block(Block::default().style(corner_style));
@@ -159,7 +159,7 @@ impl App {
             let global_col = self.viewport.col + idx - 1;
             let label = column_name(global_col);
             let selected = global_col == self.cursor.col;
-            let style = header_style(selected);
+            let style = self.header_style(selected);
             let widget = Paragraph::new(label)
                 .alignment(Alignment::Center)
                 .block(Block::default().style(style));
@@ -196,7 +196,7 @@ impl App {
 
         let row_label = (global_row + 1).to_string();
         let row_selected = global_row == self.cursor.row;
-        let row_style = header_style(row_selected);
+        let row_style = self.header_style(row_selected);
         let row_widget = Paragraph::new(row_label)
             .alignment(Alignment::Center)
             .block(Block::default().style(row_style));
@@ -205,9 +205,17 @@ impl App {
         for (idx, cell_area) in col_chunks.iter().enumerate().skip(1) {
             let global_col = self.viewport.col + idx - 1;
             let style = if global_row == self.cursor.row && global_col == self.cursor.col {
-                self.selected_cell_style()
-            } else if global_row == self.cursor.row || global_col == self.cursor.col {
-                Style::default().bg(ROW_HIGHLIGHT_BG)
+                Style::default()
+                    .bg(self.theme.selected_cell_bg)
+                    .fg(self.theme.selected_cell_fg)
+            } else if global_row == self.cursor.row {
+                Style::default()
+                    .bg(self.theme.selected_row_bg)
+                    .fg(self.theme.selected_row_fg)
+            } else if global_col == self.cursor.col {
+                Style::default()
+                    .bg(self.theme.selected_col_bg)
+                    .fg(self.theme.selected_col_fg)
             } else {
                 Style::default()
             };
@@ -251,10 +259,6 @@ impl App {
         }
     }
 
-    fn selected_cell_style(&self) -> Style {
-        Style::default().fg(Color::Black).bg(Color::Yellow)
-    }
-
     fn render_cell_text(&self, row: usize, col: usize) -> Text<'static> {
         let value = self.get_cell_value(row, col);
         let cursor = match self.mode {
@@ -274,7 +278,7 @@ impl App {
                     Span::styled(" ", cursor_style),
                 ]));
             }
-            
+
             let (cursor_char, after) = almost_after.split_at(1);
 
             let line = Line::from(vec![
@@ -294,6 +298,18 @@ impl App {
             _ => "".to_string(),
         }
     }
+
+    fn header_style(&self, selected: bool) -> Style {
+        if selected {
+            Style::default()
+                .bg(self.theme.header_selected_bg)
+                .fg(self.theme.header_selected_fg)
+        } else {
+            Style::default()
+                .bg(self.theme.header_bg)
+                .fg(self.theme.header_fg)
+        }
+    }
 }
 
 fn column_name(mut index: usize) -> String {
@@ -305,12 +321,4 @@ fn column_name(mut index: usize) -> String {
         index = (index - 1) / 26;
     }
     name
-}
-
-fn header_style(selected: bool) -> Style {
-    if selected {
-        Style::default().fg(Color::White).bg(HEADER_HIGHLIGHT_BG)
-    } else {
-        Style::default().fg(Color::White).bg(HEADER_BG)
-    }
 }

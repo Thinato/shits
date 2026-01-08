@@ -5,7 +5,8 @@ mod render;
 use std::{collections::HashMap, fmt};
 
 use color_eyre::Result;
-use ratatui::DefaultTerminal;
+use ratatui::{DefaultTerminal, style::Color};
+use serde::Deserialize;
 
 const DEFAULT_VISIBLE_ROWS: usize = 12;
 const DEFAULT_VISIBLE_COLS: usize = 8;
@@ -22,6 +23,7 @@ pub struct App {
     file_name: String,
     command_buffer: String,
     clipboard: Option<String>,
+    theme: Theme,
 }
 
 impl App {
@@ -37,6 +39,7 @@ impl App {
             file_name: String::from("Untitled.csv"),
             command_buffer: String::new(),
             clipboard: None,
+            theme: Theme::default(),
         }
     }
 
@@ -98,4 +101,47 @@ impl fmt::Display for Mode {
 #[derive(Debug, Clone, Copy)]
 struct InsertState {
     cursor: usize,
+}
+
+#[derive(Debug)]
+struct Theme {
+    global_bg: Color,
+    global_fg: Color,
+    cursor_fg: Color,
+    cursor_bg: Color,
+    title_fg: Color,
+    title_bg: Color,
+    header_fg: Color,
+    header_bg: Color,
+    header_selected_fg: Color,
+    header_selected_bg: Color,
+    selected_cell_fg: Color,
+    selected_cell_bg: Color,
+    selected_row_fg: Color,
+    selected_row_bg: Color,
+    selected_col_fg: Color,
+    selected_col_bg: Color,
+}
+
+impl Default for Theme {
+    fn default() -> Self {
+        Self {
+            global_fg: Color::Rgb(255, 255, 255),
+            global_bg: Color::Rgb(18, 18, 18),
+            cursor_fg: Color::Rgb(158, 149, 199),
+            cursor_bg: Color::Rgb(18, 18, 18),
+            title_fg: Color::Rgb(158, 149, 199),
+            title_bg: Color::Rgb(18, 18, 18),
+            header_fg: Color::Rgb(255, 255, 255),
+            header_bg: Color::Rgb(18, 18, 18),
+            header_selected_fg: Color::Rgb(255, 255, 255),
+            header_selected_bg: Color::Rgb(70, 70, 70),
+            selected_cell_fg: Color::Rgb(255, 255, 255),
+            selected_cell_bg: Color::Rgb(255, 221, 51),
+            selected_row_fg: Color::Rgb(255, 255, 255),
+            selected_row_bg: Color::Rgb(32, 32, 32),
+            selected_col_fg: Color::Rgb(255, 255, 255),
+            selected_col_bg: Color::Rgb(32, 32, 32),
+        }
+    }
 }
