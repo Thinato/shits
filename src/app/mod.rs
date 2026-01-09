@@ -40,7 +40,7 @@ impl App {
             viewport: Viewport::default(),
             cells: HashMap::new(),
             cursor: Cursor::default(),
-            file_name: String::from("Untitled.csv"),
+            file_name: String::new(),
             command_buffer: String::new(),
             clipboard: None,
             theme: Theme::default(),

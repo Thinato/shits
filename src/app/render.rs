@@ -250,7 +250,12 @@ impl App {
 
         if base_lines > 0 && !footer_chunks.is_empty() {
             let cell_label = format!("{}{}", column_name(self.cursor.col), self.cursor.row + 1);
-            let line = format!("{} - [{}]", self.file_name, cell_label);
+            let line;
+            if self.file_name.is_empty() {
+                line = format!("[No Name] - [{}]",  cell_label);
+            }else {
+                 line = format!("{} - [{}]", self.file_name, cell_label);
+            }
             frame.render_widget(
                 Paragraph::new(line).style(self.global_style()),
                 footer_chunks[0],
