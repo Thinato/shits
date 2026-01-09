@@ -281,12 +281,16 @@ impl App {
     }
 
     fn render_cell_text(&self, row: usize, col: usize) -> Text<'static> {
-        let value = self.get_cell_value(row, col);
+        let value;
         let cursor = match self.mode {
             Mode::Insert(state) if self.cursor.row == row && self.cursor.col == col => {
+                value = self.get_cell_value(row, col);
                 Some(state.cursor)
             }
-            _ => None,
+            _ => {
+                value = self.get_cell_display_text(row, col);
+                None
+            }
         };
 
         if let Some(cursor) = cursor {
@@ -320,6 +324,16 @@ impl App {
             Some(value) if !value.is_empty() => value.clone(),
             _ => "".to_string(),
         }
+    }
+
+    fn get_cell_display_text(&self, row: usize, col: usize) -> String {
+        let value = self.get_cell_value(row, col);
+
+        if value.starts_with("=") {
+            return "#NAME?".to_string();
+        }
+
+        return value;
     }
 
     fn header_style(&self, selected: bool) -> Style {
