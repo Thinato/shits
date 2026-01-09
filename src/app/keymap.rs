@@ -198,7 +198,6 @@ impl App {
             }
             _ => self.command_buffer = format!("unknown command: {}", command[0]),
         }
-        self.clear_command_buffer();
     }
 
     fn handle_theme_command(&mut self, name: Option<&str>) {
@@ -216,13 +215,6 @@ impl App {
                 }
                 Err(err) => self.command_buffer = format!("theme error: {}", err),
             },
-        }
-    }
-
-    fn handle_save_command(&mut self, path: String) {
-        match self.save_sheet(path.as_str()) {
-            Ok(path) => self.command_buffer = format!("saved {}", path),
-            Err(err) => self.command_buffer = format!("save failed: {}", err),
         }
     }
 
@@ -374,7 +366,6 @@ impl App {
 
     fn enter_normal_mode(&mut self) {
         self.mode = Mode::Normal;
-        self.command_buffer.clear();
     }
 
     fn enter_command_mode(&mut self) {
@@ -518,7 +509,20 @@ impl App {
         csv_escape(&value)
     }
 
+    fn handle_save_command(&mut self, path: String) {
+        match self.save_sheet(path.as_str()) {
+            Ok(path) => self.command_buffer = format!("\"{}\" written", path),
+            Err(err) => self.command_buffer = format!("E{}: {}", err.kind() as usize, err),
+        }
+    }
+    
     fn save_sheet(&self, path: &str) -> io::Result<String> {
+        if path.is_empty() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidFilename,
+                "No file name",
+            ));
+        }
         let mut file = File::create(&path)?;
         let max_row = self
             .cells

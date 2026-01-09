@@ -252,9 +252,9 @@ impl App {
             let cell_label = format!("{}{}", column_name(self.cursor.col), self.cursor.row + 1);
             let line;
             if self.file_name.is_empty() {
-                line = format!("[No Name] - [{}]",  cell_label);
-            }else {
-                 line = format!("{} - [{}]", self.file_name, cell_label);
+                line = format!("[No Name] - [{}]", cell_label);
+            } else {
+                line = format!("{} - [{}]", self.file_name, cell_label);
             }
             frame.render_widget(
                 Paragraph::new(line).style(self.global_style()),
@@ -265,15 +265,9 @@ impl App {
         if base_lines > 1 && footer_chunks.len() > 1 {
             let mode_line;
             match self.mode {
-                Mode::Insert(_) => {
-                    mode_line = format!("-- INSERT -- ");
-                }
-                Mode::Command => {
-                    mode_line = format!(":{}", self.command_buffer);
-                }
-                _ => {
-                    mode_line = String::new();
-                }
+                Mode::Insert(_) => mode_line = format!("-- INSERT -- "),
+                Mode::Command => mode_line = format!(":{}", self.command_buffer),
+                Mode::Normal => mode_line = format!("{}", self.command_buffer),
             }
             frame.render_widget(
                 Paragraph::new(mode_line).style(self.global_style()),
