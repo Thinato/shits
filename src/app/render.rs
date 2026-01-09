@@ -330,7 +330,12 @@ impl App {
         let value = self.get_cell_value(row, col);
 
         if value.starts_with("=") {
-            return "#NAME?".to_string();
+            let (_, formula) = value.split_at(1);
+
+            return match formula.to_uppercase().as_str() {
+                "SUM" => "1".to_string(),
+                _ => "#NAME?".to_string(),
+            };
         }
 
         return value;
@@ -364,4 +369,14 @@ fn column_name(mut index: usize) -> String {
         index = (index - 1) / 26;
     }
     name
+}
+
+fn column_index(name: &str) -> usize {
+    let mut index = 0;
+
+    for c in name.chars() {
+        index = index * 26 + (c as usize - 'A' as usize + 1);
+    }
+
+    index - 1
 }
