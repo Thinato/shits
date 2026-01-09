@@ -163,7 +163,11 @@ impl App {
                 self.enter_normal_mode();
             }
             KeyCode::Backspace | KeyCode::Delete => {
-                self.command_buffer.pop();
+                if self.command_buffer.is_empty() {
+                    self.enter_normal_mode();
+                } else {
+                    self.command_buffer.pop();
+                }
             }
             KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.command_buffer.push(c);
@@ -511,11 +515,16 @@ impl App {
 
     fn handle_save_command(&mut self, path: String) {
         match self.save_sheet(path.as_str()) {
-            Ok(path) => self.command_buffer = format!("\"{}\" written", path),
+            Ok(path) => {
+                self.command_buffer = {
+                    self.file_name = path.clone();
+                    format!("\"{}\" written", path)
+                }
+            }
             Err(err) => self.command_buffer = format!("E{}: {}", err.kind() as usize, err),
         }
     }
-    
+
     fn save_sheet(&self, path: &str) -> io::Result<String> {
         if path.is_empty() {
             return Err(io::Error::new(
