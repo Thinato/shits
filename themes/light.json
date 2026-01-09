@@ -7,7 +7,7 @@
     "title_bg": [255, 255, 255],
     "header_fg": [0, 0, 255],
     "header_bg": [255, 255, 255],
-    "header_selected_fg": [70, 70, 70],
+    "header_selected_fg": [255, 0, 0],
     "header_selected_bg": [255, 255, 255],
     "selected_cell_fg": [255, 255, 255],
     "selected_cell_bg": [0, 0, 0],
