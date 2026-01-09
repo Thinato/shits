@@ -178,7 +178,7 @@ impl App {
 
         match command[0] {
             "w" | "write" => {
-                let path = command.get(1).cloned().unwrap_or(self.file_name.as_str());
+                let path = command.get(1).copied().unwrap_or(self.file_name.as_str());
                 self.handle_save_command(String::from(path));
             }
             "q" | "quit" => self.quit(),
@@ -187,7 +187,7 @@ impl App {
                 self.quit()
             }
             "cols" => {
-                let amount = command.get(1).cloned().unwrap_or("8");
+                let amount = command.get(1).copied().unwrap_or("8");
                 if let Ok(amount) = amount.parse::<usize>() {
                     self.visible_cols = amount;
                 }
