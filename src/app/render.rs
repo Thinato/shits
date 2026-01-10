@@ -371,7 +371,7 @@ fn column_name(mut index: usize) -> String {
     name
 }
 
-fn column_index(name: &str) -> usize {
+fn _column_index(name: &str) -> usize {
     let mut index = 0;
 
     for c in name.chars() {
